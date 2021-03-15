@@ -1,0 +1,19 @@
+{
+  "name": "fragote/niubiz",
+  "description": "Implementación de APIs Nibuiz",
+  "type": "library",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Francis Gonzales",
+      "email": "fgonzalestello91@gmail.com"
+    }
+  ],
+  "minimum-stability": "dev",
+  "require": {},
+  "autoload": {
+    "psr-4": {
+      "Niubiz\\": "src/Niubiz/"
+    }
+  }
+}
