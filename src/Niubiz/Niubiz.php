@@ -113,8 +113,10 @@ class Niubiz
 		$data = [
 			'channel' => $channel,
 			'amount' => number_format($amount, 2, '.', ''),
-			'clientIp' => $clientIp,
-			'merchantDefineData' => $mdd
+			'antifraud' => [
+				'clientIp' => $clientIp,
+				'merchantDefineData' => $mdd
+			]
 		];
 
 		$this->accessToken();
