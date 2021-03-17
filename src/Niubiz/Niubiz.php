@@ -12,6 +12,8 @@ class Niubiz
 	const ENDPOINT_PRODUCTION_TOK = 'https://apiprod.vnforapps.com/api.ecommerce/v2/ecommerce/token/session/';
 	const JS_PAGO_WEB_TESTING = 'https://static-content-qas.vnforapps.com/v2/js/checkout.js?qa=true';
 	const JS_PAGO_WEB_PRODUCTION = 'https://static-content.vnforapps.com/v2/js/checkout.js';
+	const ENDPOINT_TESTING_AUTH = 'https://apisandbox.vnforappstest.com/api.authorization/v3/authorization/ecommerce/';
+	const ENDPOINT_PRODUCTION_AUTH = 'https://apiprod.vnforapps.com/api.authorization/v3/authorization/ecommerce/';
 
 	public function __construct(string $mercandId, string $username, string $password, bool $isProd = false)
 	{
@@ -21,7 +23,7 @@ class Niubiz
 		$this->isProd = $isProd;
 	}
 
-	public function apiCall(string $url, string $method, array $data = []) : string
+	public function apiCall(string $url, string $method, array $data = []) : stdClass
 	{
 		$curl = curl_init();
 
@@ -55,9 +57,13 @@ class Niubiz
 		curl_setopt($curl, CURLOPT_URL, $url);
 		curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
 		$result = curl_exec($curl);
+		$httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
 		curl_close($curl);
 
-		return $result;
+		return (object)[
+			'http_code' => $httpCode,
+			'result' => $result
+		];
 	}
 
 	public function securityApiUrl()
@@ -78,12 +84,21 @@ class Niubiz
 		return self::ENDPOINT_TESTING_TOK . $this->mercandId;
 	}
 
+	public function authorizeTransactionApiUrl()
+	{
+		if ($this->isProd) {
+			return self::ENDPOINT_PRODUCTION_AUTH . $this->mercandId;
+		}
+
+		return self::ENDPOINT_TESTING_AUTH . $this->mercandId;
+	}
+
 	public function accessToken() : ?string
 	{
 		$token = $this->apiCall(
 			$this->securityApiUrl(),
 			'GET'
-		);
+		)->result;
 
 		if (in_array($token, ['Unauthorized access', 'Bad Request'])) {
 			return null;
@@ -103,7 +118,7 @@ class Niubiz
 		];
 
 		$this->accessToken();
-		$sessionToken = $this->apiCall($this->tokenSessionApiUrl(), 'POST', $data);
+		$sessionToken = $this->apiCall($this->tokenSessionApiUrl(), 'POST', $data)->result;
 		return json_decode($sessionToken);
 	}
 
@@ -140,5 +155,25 @@ class Niubiz
 			    data-formbuttoncolor="' . $formButtonColor . '"
 			  ></script>
 			</form>';
+	}
+
+	public function autorizacionTransaccion(string $purchaseNumber, string $token, float $amount, string $currency = 'PEN', string $channel = 'web', string $captureType = 'manual') : ?stdClass
+	{
+		$data = [
+			'channel' => $channel,
+			'captureType' => $captureType,
+			'order' => [
+				'tokenId' => $token,
+				'purchaseNumber' => $purchaseNumber,
+				'amount' => $amount,
+				'currency' => $currency
+			]
+		];
+
+		$this->accessToken();
+		$transaccion = $this->apiCall($this->authorizeTransactionApiUrl(), 'POST', $data);
+		$transaccion->result = json_decode($transaccion->result);
+
+		return $transaccion;
 	}
 }
